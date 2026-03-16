@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda triggered by DynamoDB Streams to create S3 prefixes
+
+Parameters:
+
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: Existing IAM Role ARN for Lambda
+
+  DynamoStreamArn:
+    Type: String
+    Description: DynamoDB Stream ARN
+
+  CodeBucket:
+    Type: String
+    Description: S3 bucket containing lambda zip
+
+  CodeKey:
+    Type: String
+    Description: Lambda zip key
+
+Resources:
+
+  AccountBootstrapLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: accounta-dynamo-s3-bootstrap-lambda
+      Runtime: python3.11
+      Handler: lambda_func.lambda_handler
+      Timeout: 60
+      Role: !Ref LambdaExecutionRoleArn
+
+      Code:
+        S3Bucket: !Ref CodeBucket
+        S3Key: !Ref CodeKey
+
+      Environment:
+        Variables:
+          ACCOUNTA_DYNAMODB_TABLE: accounta_dynamo
+          ACCOUNTB_ID: "asdsads"
+          ACCOUNTB_CAR_ROLE: accountb_car_s3role
+          ACCOUNTB_S3_BUCKET: accountb-s3-bucket
+          APP_REGION: us-east-1
+
+  DynamoStreamTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      StartingPosition: LATEST
+      EventSourceArn: !Ref DynamoStreamArn
+      FunctionName: !Ref AccountBootstrapLambda
+
+Outputs:
+
+  LambdaName:
+    Value: !Ref AccountBootstrapLambda
